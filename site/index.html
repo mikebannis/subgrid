@@ -8,7 +8,7 @@
       html, body { margin: 0; height: 100%; background: #0a0e14; overflow: hidden; }
       #app { width: 100%; height: 100%; }
       #hud {
-        position: absolute; top: 12px; left: 12px; color: #cfd8e3;
+        position: absolute; top: 12px; left: 12px; color: #cfd8e3; z-index: 10;
         font: 13px/1.4 system-ui, sans-serif; background: rgba(10, 14, 20, 0.6);
         padding: 10px 14px; border-radius: 6px; max-width: 320px;
       }
@@ -16,7 +16,7 @@
       #compass {
         position: absolute; top: 12px; right: 12px; width: 48px; height: 48px;
         color: #cfd8e3; font: bold 13px/1 system-ui, sans-serif; text-align: center;
-        transition: transform 0.05s linear;
+        transition: transform 0.05s linear; z-index: 10;
       }
       #compass-arrow { font-size: 22px; line-height: 1; }
       .pin { display: flex; flex-direction: column; align-items: center; pointer-events: none; }
@@ -50,6 +50,7 @@
       <label>HRRR opacity <input type="range" id="opacity-hrrr" min="0" max="1" step="0.05" value="0.65" /></label>
       <label><input type="checkbox" id="toggle-imagery" checked /> Aerial imagery on DEM</label>
       <label><input type="checkbox" id="toggle-highways" checked /> Major highways</label>
+      <label><input type="checkbox" id="toggle-elevations" checked /> Elevation labels</label>
       <label><input type="range" id="exaggeration" min="1" max="4" step="0.25" value="1.5" /> vertical exaggeration <span id="exaggeration-value">1.5x</span></label>
     </div>
     <div id="compass"><div id="compass-arrow">&#9650;</div>N</div>

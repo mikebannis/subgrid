@@ -92,7 +92,7 @@ function buildHrrrMesh(grid, exaggeration, opacity) {
 
 // thin black outline around the top face of every HRRR cell, since the blocks
 // sit flush with no gaps and would otherwise blend into one solid slab
-function buildHrrrEdges(grid, exaggeration) {
+function buildHrrrEdges(grid, exaggeration, opacity) {
   const { width, height, x, y, elev, cellSizeX, cellSizeY } = grid;
   const hw = cellSizeX / 2;
   const hd = cellSizeY / 2;
@@ -117,7 +117,7 @@ function buildHrrrEdges(grid, exaggeration) {
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  const material = new THREE.LineBasicMaterial({ color: 0x000000 });
+  const material = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity });
   const lines = new THREE.LineSegments(geometry, material);
   lines.renderOrder = 2; // on top of the HRRR blocks themselves
   return lines;
@@ -133,7 +133,7 @@ function buildHrrrLabels(grid, exaggeration) {
     for (let c = 0; c < width; c++) {
       const el = document.createElement("div");
       el.className = "elev-label";
-      el.textContent = `${Math.round((elev[r][c] * FEET_PER_METER) / 100) * 100} ft`;
+      el.textContent = `${Math.round((elev[r][c] * FEET_PER_METER) / 100) * 100}'`;
       const obj = new CSS2DObject(el);
       const top = Math.max(elev[r][c] * exaggeration, 1);
       obj.position.set(x[c], top + 1, -y[r]);
@@ -236,22 +236,28 @@ async function main() {
 
   const hrrrOpacitySlider = document.getElementById("opacity-hrrr");
   const imageryToggle = document.getElementById("toggle-imagery");
+  const elevationsToggle = document.getElementById("toggle-elevations");
 
   // DEM is locked on at full opacity for now - no HUD controls for it
   let demMesh = buildDemMesh(dem, EXAGGERATION_DEFAULT, 1, imageryToggle.checked ? imageryTexture : null);
   let hrrrMesh = buildHrrrMesh(hrrr, EXAGGERATION_DEFAULT, parseFloat(hrrrOpacitySlider.value));
-  let hrrrEdges = buildHrrrEdges(hrrr, EXAGGERATION_DEFAULT);
+  let hrrrEdges = buildHrrrEdges(hrrr, EXAGGERATION_DEFAULT, parseFloat(hrrrOpacitySlider.value));
   let hrrrLabels = buildHrrrLabels(hrrr, EXAGGERATION_DEFAULT);
+  for (const label of hrrrLabels) label.visible = elevationsToggle.checked;
   let { group: hwyGroup, labels: hwyLabels } = buildHighways(highways, EXAGGERATION_DEFAULT);
   scene.add(demMesh, hrrrMesh, hrrrEdges, hwyGroup, ...hrrrLabels, ...hwyLabels);
 
   document.getElementById("toggle-hrrr").addEventListener("change", (e) => {
     hrrrMesh.visible = e.target.checked;
     hrrrEdges.visible = e.target.checked;
-    for (const label of hrrrLabels) label.visible = e.target.checked;
   });
   hrrrOpacitySlider.addEventListener("input", (e) => {
-    hrrrMesh.material.opacity = parseFloat(e.target.value);
+    const opacity = parseFloat(e.target.value);
+    hrrrMesh.material.opacity = opacity;
+    hrrrEdges.material.opacity = opacity;
+  });
+  elevationsToggle.addEventListener("change", (e) => {
+    for (const label of hrrrLabels) label.visible = e.target.checked;
   });
   document.getElementById("toggle-highways").addEventListener("change", (e) => {
     hwyGroup.visible = e.target.checked;
@@ -275,12 +281,12 @@ async function main() {
     for (const line of hwyGroup.children) line.geometry.dispose();
     demMesh = buildDemMesh(dem, exaggeration, 1, imageryToggle.checked ? imageryTexture : null);
     hrrrMesh = buildHrrrMesh(hrrr, exaggeration, parseFloat(hrrrOpacitySlider.value));
-    hrrrEdges = buildHrrrEdges(hrrr, exaggeration);
+    hrrrEdges = buildHrrrEdges(hrrr, exaggeration, parseFloat(hrrrOpacitySlider.value));
     hrrrLabels = buildHrrrLabels(hrrr, exaggeration);
     ({ group: hwyGroup, labels: hwyLabels } = buildHighways(highways, exaggeration));
     hrrrMesh.visible = hrrrVisible;
     hrrrEdges.visible = hrrrVisible;
-    for (const label of hrrrLabels) label.visible = hrrrVisible;
+    for (const label of hrrrLabels) label.visible = elevationsToggle.checked;
     hwyGroup.visible = hwyVisible;
     for (const label of hwyLabels) label.visible = hwyVisible;
     scene.add(demMesh, hrrrMesh, hrrrEdges, hwyGroup, ...hrrrLabels, ...hwyLabels);
