@@ -143,6 +143,38 @@ function buildHrrrLabels(grid, exaggeration) {
   return labels;
 }
 
+// highways.ways is a list of {label, x, y, elev} polylines (draped on terrain,
+// raised slightly to avoid z-fighting); highways.labels is one point per
+// distinct route ref, already picked at its longest segment's midpoint
+function buildHighways(highways, exaggeration) {
+  const group = new THREE.Group();
+  const material = new THREE.LineBasicMaterial({ color: 0xffd400 });
+  for (const way of highways.ways) {
+    const positions = new Float32Array(way.x.length * 3);
+    for (let i = 0; i < way.x.length; i++) {
+      positions[i * 3] = way.x[i];
+      positions[i * 3 + 1] = way.elev[i] * exaggeration + 2;
+      positions[i * 3 + 2] = -way.y[i];
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const line = new THREE.Line(geometry, material);
+    line.renderOrder = 2;
+    group.add(line);
+  }
+
+  const labels = highways.labels.map((l) => {
+    const el = document.createElement("div");
+    el.className = "hwy-label";
+    el.textContent = l.label;
+    const obj = new CSS2DObject(el);
+    obj.position.set(l.x, l.elev * exaggeration + 2, -l.y);
+    return obj;
+  });
+
+  return { group, labels };
+}
+
 function loadTexture(url) {
   return new THREE.TextureLoader().loadAsync(url).then((tex) => {
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -151,11 +183,12 @@ function loadTexture(url) {
 }
 
 async function main() {
-  const [hrrr, dem, imageryTexture, pins] = await Promise.all([
+  const [hrrr, dem, imageryTexture, pins, highways] = await Promise.all([
     loadGrid("/data/hrrr.json"),
     loadGrid("/data/dem.json"),
     loadTexture("/data/imagery.jpg"),
     loadGrid("/data/pins.json"),
+    loadGrid("/data/highways.json"),
   ]);
 
   const app = document.getElementById("app");
@@ -209,7 +242,8 @@ async function main() {
   let hrrrMesh = buildHrrrMesh(hrrr, EXAGGERATION_DEFAULT, parseFloat(hrrrOpacitySlider.value));
   let hrrrEdges = buildHrrrEdges(hrrr, EXAGGERATION_DEFAULT);
   let hrrrLabels = buildHrrrLabels(hrrr, EXAGGERATION_DEFAULT);
-  scene.add(demMesh, hrrrMesh, hrrrEdges, ...hrrrLabels);
+  let { group: hwyGroup, labels: hwyLabels } = buildHighways(highways, EXAGGERATION_DEFAULT);
+  scene.add(demMesh, hrrrMesh, hrrrEdges, hwyGroup, ...hrrrLabels, ...hwyLabels);
 
   document.getElementById("toggle-hrrr").addEventListener("change", (e) => {
     hrrrMesh.visible = e.target.checked;
@@ -218,6 +252,10 @@ async function main() {
   });
   hrrrOpacitySlider.addEventListener("input", (e) => {
     hrrrMesh.material.opacity = parseFloat(e.target.value);
+  });
+  document.getElementById("toggle-highways").addEventListener("change", (e) => {
+    hwyGroup.visible = e.target.checked;
+    for (const label of hwyLabels) label.visible = e.target.checked;
   });
   imageryToggle.addEventListener("change", (e) => {
     demMesh.material.map = e.target.checked ? imageryTexture : null;
@@ -229,18 +267,23 @@ async function main() {
     const exaggeration = parseFloat(e.target.value);
     exaggerationValue.textContent = `${exaggeration}x`;
     const hrrrVisible = hrrrMesh.visible;
-    scene.remove(demMesh, hrrrMesh, hrrrEdges, ...hrrrLabels);
+    const hwyVisible = hwyGroup.visible;
+    scene.remove(demMesh, hrrrMesh, hrrrEdges, hwyGroup, ...hrrrLabels, ...hwyLabels);
     demMesh.geometry.dispose();
     hrrrMesh.geometry.dispose();
     hrrrEdges.geometry.dispose();
+    for (const line of hwyGroup.children) line.geometry.dispose();
     demMesh = buildDemMesh(dem, exaggeration, 1, imageryToggle.checked ? imageryTexture : null);
     hrrrMesh = buildHrrrMesh(hrrr, exaggeration, parseFloat(hrrrOpacitySlider.value));
     hrrrEdges = buildHrrrEdges(hrrr, exaggeration);
     hrrrLabels = buildHrrrLabels(hrrr, exaggeration);
+    ({ group: hwyGroup, labels: hwyLabels } = buildHighways(highways, exaggeration));
     hrrrMesh.visible = hrrrVisible;
     hrrrEdges.visible = hrrrVisible;
     for (const label of hrrrLabels) label.visible = hrrrVisible;
-    scene.add(demMesh, hrrrMesh, hrrrEdges, ...hrrrLabels);
+    hwyGroup.visible = hwyVisible;
+    for (const label of hwyLabels) label.visible = hwyVisible;
+    scene.add(demMesh, hrrrMesh, hrrrEdges, hwyGroup, ...hrrrLabels, ...hwyLabels);
     for (const { obj, elev } of pinObjects) {
       obj.position.y = elev * exaggeration;
     }

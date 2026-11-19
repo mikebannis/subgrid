@@ -75,21 +75,62 @@ def main() -> None:
     print(f"dem.json: {dem_out['width']}x{dem_out['height']} points (decimated from {dem['elev'].shape})")
 
     dem_lon_1d, dem_lat_1d = dem_lon[0, :], dem_lat[:, 0]
+
+    def sample_elev(lat: float, lon: float) -> float:
+        c = int(np.argmin(np.abs(dem_lon_1d - lon)))
+        r = int(np.argmin(np.abs(dem_lat_1d - lat)))
+        return float(dem_elev[r, c])
+
     pins_out = []
     for pin in PINS:
-        c = int(np.argmin(np.abs(dem_lon_1d - pin["lon"])))
-        r = int(np.argmin(np.abs(dem_lat_1d - pin["lat"])))
         px, py = lonlat_to_local(np.array([pin["lon"]]), np.array([pin["lat"]]))
         pins_out.append(
             {
                 "name": pin["name"],
                 "x": float(px[0]),
                 "y": float(py[0]),
-                "elev": float(dem_elev[r, c]),
+                "elev": sample_elev(pin["lat"], pin["lon"]),
             }
         )
     (OUT_DIR / "pins.json").write_text(json.dumps(pins_out))
     print(f"pins.json: {[p['name'] for p in pins_out]}")
+
+    highways_raw_path = OUT_DIR / "highways_raw.json"
+    if highways_raw_path.exists():
+        raw_ways = json.loads(highways_raw_path.read_text())
+        ways_out = []
+        by_label: dict[str, list[dict]] = {}
+        for way in raw_ways:
+            lats = np.array([p[0] for p in way["points"]])
+            lons = np.array([p[1] for p in way["points"]])
+            wx, wy = lonlat_to_local(lons, lats)
+            way_entry = {
+                "label": way["label"],
+                "x": wx.tolist(),
+                "y": wy.tolist(),
+                "elev": [sample_elev(lat, lon) for lat, lon in zip(lats, lons)],
+            }
+            ways_out.append(way_entry)
+            by_label.setdefault(way["label"], []).append(way_entry)
+
+        # one label per distinct ref, placed at the midpoint of its longest segment
+        labels_out = []
+        for label, segs in by_label.items():
+            longest = max(segs, key=lambda s: len(s["x"]))
+            mid = len(longest["x"]) // 2
+            labels_out.append(
+                {
+                    "label": label,
+                    "x": longest["x"][mid],
+                    "y": longest["y"][mid],
+                    "elev": longest["elev"][mid],
+                }
+            )
+
+        (OUT_DIR / "highways.json").write_text(json.dumps({"ways": ways_out, "labels": labels_out}))
+        print(f"highways.json: {len(ways_out)} segments, {len(labels_out)} labels")
+    else:
+        print("no highways_raw.json found, skipping (run fetch_highways.py first)")
 
 
 if __name__ == "__main__":

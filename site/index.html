@@ -35,6 +35,11 @@
         background: rgba(10, 14, 20, 0.55); padding: 1px 3px; border-radius: 2px;
         white-space: nowrap; pointer-events: none;
       }
+      .hwy-label {
+        font: bold 11px/1 system-ui, sans-serif; color: #1a1a1a;
+        background: #ffd400; padding: 2px 5px; border-radius: 2px;
+        border: 1px solid #1a1a1a; white-space: nowrap; pointer-events: none;
+      }
     </style>
   </head>
   <body>
@@ -44,6 +49,7 @@
       <label><input type="checkbox" id="toggle-hrrr" checked /> HRRR model terrain (3km blocks)</label>
       <label>HRRR opacity <input type="range" id="opacity-hrrr" min="0" max="1" step="0.05" value="0.65" /></label>
       <label><input type="checkbox" id="toggle-imagery" checked /> Aerial imagery on DEM</label>
+      <label><input type="checkbox" id="toggle-highways" checked /> Major highways</label>
       <label><input type="range" id="exaggeration" min="1" max="4" step="0.25" value="1.5" /> vertical exaggeration <span id="exaggeration-value">1.5x</span></label>
     </div>
     <div id="compass"><div id="compass-arrow">&#9650;</div>N</div>
