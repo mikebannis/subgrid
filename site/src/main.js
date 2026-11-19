@@ -42,11 +42,14 @@ function buildDemMesh(grid, exaggeration, opacity) {
     color: 0x8fb8d8,
     transparent: true,
     opacity,
+    depthWrite: false, // let HRRR blend over this instead of depth-testing it away
     side: THREE.DoubleSide,
     roughness: 0.8,
   });
 
-  return new THREE.Mesh(geometry, material);
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.renderOrder = 0; // draw first so HRRR's blend sees it, not just the background
+  return mesh;
 }
 
 // one box per model grid cell - the native blocky resolution of HRRR/RRFS terrain
@@ -58,8 +61,10 @@ function buildHrrrMesh(grid, exaggeration, opacity) {
     roughness: 0.9,
     transparent: true,
     opacity,
+    depthWrite: false,
   });
   const mesh = new THREE.InstancedMesh(geometry, material, width * height);
+  mesh.renderOrder = 1; // draw after the DEM so lowering opacity reveals it, not the void
 
   const m = new THREE.Matrix4();
   let i = 0;
@@ -92,14 +97,14 @@ async function main() {
     1,
     100000,
   );
-  camera.position.set(8000, 6000, 10000);
+  camera.position.set(16000, 13000, 20000);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   app.appendChild(renderer.domElement);
 
   const controls = new OrbitControls(camera, renderer.domElement);
-  controls.target.set(0, 500, 0);
+  controls.target.set(0, 2200, 0);
   controls.update();
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.6));
