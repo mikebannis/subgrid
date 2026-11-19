@@ -26,6 +26,12 @@ SCALE = math.cos(math.radians(ORIGIN_LAT))  # Web Mercator -> true ground meters
 
 DEM_TARGET_SIZE = 400  # decimate DEM to roughly this many points per side
 
+# 39deg44'45.2"N 105deg14'26.9"W converted to decimal degrees
+PINS = [
+    {"name": "LO LZ", "lat": 39.74992603665513, "lon": -105.2306209586858},
+    {"name": "North Launch", "lat": 39.7458888889, "lon": -105.2408055556},
+]
+
 to_webmerc = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
 
 
@@ -74,6 +80,23 @@ def main() -> None:
     dem_out["v"] = ((dem_lat[:, 0] - BBOX["lat_min"]) / (BBOX["lat_max"] - BBOX["lat_min"])).tolist()
     (OUT_DIR / "dem.json").write_text(json.dumps(dem_out))
     print(f"dem.json: {dem_out['width']}x{dem_out['height']} points (decimated from {dem['elev'].shape})")
+
+    dem_lon_1d, dem_lat_1d = dem_lon[0, :], dem_lat[:, 0]
+    pins_out = []
+    for pin in PINS:
+        c = int(np.argmin(np.abs(dem_lon_1d - pin["lon"])))
+        r = int(np.argmin(np.abs(dem_lat_1d - pin["lat"])))
+        px, py = lonlat_to_local(np.array([pin["lon"]]), np.array([pin["lat"]]))
+        pins_out.append(
+            {
+                "name": pin["name"],
+                "x": float(px[0]),
+                "y": float(py[0]),
+                "elev": float(dem_elev[r, c]),
+            }
+        )
+    (OUT_DIR / "pins.json").write_text(json.dumps(pins_out))
+    print(f"pins.json: {[p['name'] for p in pins_out]}")
 
 
 if __name__ == "__main__":

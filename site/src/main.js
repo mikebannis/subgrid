@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { CSS2DRenderer, CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
 
 const EXAGGERATION_DEFAULT = 1.5;
 
@@ -97,10 +98,11 @@ function loadTexture(url) {
 }
 
 async function main() {
-  const [hrrr, dem, imageryTexture] = await Promise.all([
+  const [hrrr, dem, imageryTexture, pins] = await Promise.all([
     loadGrid("/data/hrrr.json"),
     loadGrid("/data/dem.json"),
     loadTexture("/data/imagery.jpg"),
+    loadGrid("/data/pins.json"),
   ]);
 
   const app = document.getElementById("app");
@@ -119,6 +121,14 @@ async function main() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   app.appendChild(renderer.domElement);
 
+  const labelRenderer = new CSS2DRenderer();
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.domElement.style.position = "absolute";
+  labelRenderer.domElement.style.top = "0";
+  labelRenderer.domElement.style.left = "0";
+  labelRenderer.domElement.style.pointerEvents = "none";
+  document.body.appendChild(labelRenderer.domElement);
+
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 2200, 0);
   controls.update();
@@ -127,6 +137,16 @@ async function main() {
   const sun = new THREE.DirectionalLight(0xffffff, 1.2);
   sun.position.set(-5000, 8000, 4000);
   scene.add(sun);
+
+  const pinObjects = pins.map((pin) => {
+    const el = document.createElement("div");
+    el.className = "pin";
+    el.innerHTML = `<div class="pin-dot"></div><div class="pin-text">${pin.name}</div>`;
+    const obj = new CSS2DObject(el);
+    obj.position.set(pin.x, pin.elev * EXAGGERATION_DEFAULT, -pin.y);
+    scene.add(obj);
+    return { obj, elev: pin.elev };
+  });
 
   const hrrrOpacitySlider = document.getElementById("opacity-hrrr");
   const demOpacitySlider = document.getElementById("opacity-dem");
@@ -177,12 +197,16 @@ async function main() {
     demMesh.visible = demVisible;
     hrrrMesh.visible = hrrrVisible;
     scene.add(demMesh, hrrrMesh);
+    for (const { obj, elev } of pinObjects) {
+      obj.position.y = elev * exaggeration;
+    }
   });
 
   window.addEventListener("resize", () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
   });
 
   const compass = document.getElementById("compass");
@@ -195,6 +219,7 @@ async function main() {
     );
     compass.style.transform = `rotate(${azimuthDeg}deg)`;
     renderer.render(scene, camera);
+    labelRenderer.render(scene, camera);
   });
 }
 

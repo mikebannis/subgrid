@@ -19,6 +19,17 @@
         transition: transform 0.05s linear;
       }
       #compass-arrow { font-size: 22px; line-height: 1; }
+      .pin { display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+      .pin-dot {
+        width: 9px; height: 9px; border-radius: 50%;
+        background: #ff3b3b; border: 1.5px solid white;
+        box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+      }
+      .pin-text {
+        margin-top: 3px; font: 11px/1 system-ui, sans-serif; color: #fff;
+        background: rgba(10, 14, 20, 0.75); padding: 2px 5px; border-radius: 3px;
+        white-space: nowrap;
+      }
     </style>
   </head>
   <body>
@@ -26,9 +37,9 @@
     <div id="hud">
       <strong>Golden, CO - HRRR terrain vs DEM</strong>
       <label><input type="checkbox" id="toggle-hrrr" checked /> HRRR model terrain (3km blocks)</label>
-      <label>HRRR opacity <input type="range" id="opacity-hrrr" min="0" max="1" step="0.05" value="1" /></label>
+      <label>HRRR opacity <input type="range" id="opacity-hrrr" min="0" max="1" step="0.05" value="0.65" /></label>
       <label><input type="checkbox" id="toggle-dem" checked /> DEM surface (~57m)</label>
-      <label>DEM opacity <input type="range" id="opacity-dem" min="0" max="1" step="0.05" value="0.55" /></label>
+      <label>DEM opacity <input type="range" id="opacity-dem" min="0" max="1" step="0.05" value="1" /></label>
       <label><input type="checkbox" id="toggle-imagery" checked /> Aerial imagery on DEM</label>
       <label><input type="range" id="exaggeration" min="1" max="4" step="0.25" value="1.5" /> vertical exaggeration <span id="exaggeration-value">1.5x</span></label>
     </div>
