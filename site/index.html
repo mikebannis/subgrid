@@ -13,6 +13,12 @@
         padding: 10px 14px; border-radius: 6px; max-width: 320px;
       }
       #hud label { display: block; margin-top: 6px; }
+      #compass {
+        position: absolute; top: 12px; right: 12px; width: 48px; height: 48px;
+        color: #cfd8e3; font: bold 13px/1 system-ui, sans-serif; text-align: center;
+        transition: transform 0.05s linear;
+      }
+      #compass-arrow { font-size: 22px; line-height: 1; }
     </style>
   </head>
   <body>
@@ -24,8 +30,9 @@
       <label><input type="checkbox" id="toggle-dem" checked /> DEM surface (~57m)</label>
       <label>DEM opacity <input type="range" id="opacity-dem" min="0" max="1" step="0.05" value="0.55" /></label>
       <label><input type="checkbox" id="toggle-imagery" checked /> Aerial imagery on DEM</label>
-      <label><input type="range" id="exaggeration" min="1" max="4" step="0.25" value="1.5" /> vertical exaggeration</label>
+      <label><input type="range" id="exaggeration" min="1" max="4" step="0.25" value="1.5" /> vertical exaggeration <span id="exaggeration-value">1.5x</span></label>
     </div>
+    <div id="compass"><div id="compass-arrow">&#9650;</div>N</div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

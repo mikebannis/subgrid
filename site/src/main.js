@@ -158,8 +158,10 @@ async function main() {
     demMesh.material.color.set(e.target.checked ? 0xffffff : 0x8fb8d8);
     demMesh.material.needsUpdate = true;
   });
+  const exaggerationValue = document.getElementById("exaggeration-value");
   document.getElementById("exaggeration").addEventListener("input", (e) => {
     const exaggeration = parseFloat(e.target.value);
+    exaggerationValue.textContent = `${exaggeration}x`;
     const demVisible = demMesh.visible;
     const hrrrVisible = hrrrMesh.visible;
     scene.remove(demMesh, hrrrMesh);
@@ -183,8 +185,15 @@ async function main() {
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 
+  const compass = document.getElementById("compass");
   renderer.setAnimationLoop(() => {
     controls.update();
+    // north is -Z in our local frame (see buildDemMesh/buildHrrrMesh); the compass
+    // tracks the camera's azimuth around the orbit target so it always points true north
+    const azimuthDeg = THREE.MathUtils.radToDeg(
+      Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z),
+    );
+    compass.style.transform = `rotate(${azimuthDeg}deg)`;
     renderer.render(scene, camera);
   });
 }
