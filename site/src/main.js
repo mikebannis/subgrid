@@ -50,26 +50,26 @@ function buildDemMesh(grid, exaggeration, opacity, texture) {
     map: texture ?? null,
     transparent: true,
     opacity,
-    depthWrite: false, // let HRRR blend over this instead of depth-testing it away
     side: THREE.DoubleSide,
     roughness: 0.8,
   });
 
   const mesh = new THREE.Mesh(geometry, material);
-  mesh.renderOrder = 0; // draw first so HRRR's blend sees it, not just the background
+  // draw first (depthWrite stays on) so HRRR - drawn after - can still depth-test
+  // and blend against it; renderOrder alone is what makes the draw order deterministic
+  mesh.renderOrder = 0;
   return mesh;
 }
 
 // one box per model grid cell - the native blocky resolution of HRRR/RRFS terrain
 function buildHrrrMesh(grid, exaggeration, opacity) {
   const { width, height, x, y, elev, cellSizeX, cellSizeY } = grid;
-  const geometry = new THREE.BoxGeometry(cellSizeX * 0.96, 1, cellSizeY * 0.96);
+  const geometry = new THREE.BoxGeometry(cellSizeX, 1, cellSizeY); // flush, no gaps
   const material = new THREE.MeshStandardMaterial({
     color: 0xd98a3d,
     roughness: 0.9,
     transparent: true,
     opacity,
-    depthWrite: false,
   });
   const mesh = new THREE.InstancedMesh(geometry, material, width * height);
   mesh.renderOrder = 1; // draw after the DEM so lowering opacity reveals it, not the void
