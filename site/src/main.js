@@ -133,7 +133,7 @@ function buildHrrrLabels(grid, exaggeration) {
     for (let c = 0; c < width; c++) {
       const el = document.createElement("div");
       el.className = "elev-label";
-      el.textContent = `${Math.round(elev[r][c] * FEET_PER_METER)} ft`;
+      el.textContent = `${Math.round((elev[r][c] * FEET_PER_METER) / 100) * 100} ft`;
       const obj = new CSS2DObject(el);
       const top = Math.max(elev[r][c] * exaggeration, 1);
       obj.position.set(x[c], top + 1, -y[r]);
