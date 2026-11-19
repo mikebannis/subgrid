@@ -7,6 +7,7 @@ dependencies = [
     "boto3>=1.44.6",
     "cfgrib>=0.9.15.1",
     "numpy>=2.5.5",
+    "pillow>=13.0.0",
     "pyproj>=3.8.0",
     "rasterio>=1.5.2",
     "requests>=2.34.2",

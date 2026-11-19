@@ -17,8 +17,11 @@ from pyproj import Transformer
 
 OUT_DIR = Path(__file__).parent / "output"
 
-ORIGIN_LAT = (39.64 + 39.87) / 2
-ORIGIN_LON = (-105.37 + -105.07) / 2
+# must match the BBOX in fetch_dem.py / fetch_hrrr_terrain.py / fetch_imagery.py
+BBOX = {"lat_min": 39.64, "lat_max": 39.87, "lon_min": -105.37, "lon_max": -105.07}
+
+ORIGIN_LAT = (BBOX["lat_min"] + BBOX["lat_max"]) / 2
+ORIGIN_LON = (BBOX["lon_min"] + BBOX["lon_max"]) / 2
 SCALE = math.cos(math.radians(ORIGIN_LAT))  # Web Mercator -> true ground meters
 
 DEM_TARGET_SIZE = 400  # decimate DEM to roughly this many points per side
@@ -66,6 +69,9 @@ def main() -> None:
     dem_elev = dem["elev"][::step_r, ::step_c]
     dx, dy = lonlat_to_local(dem_lon, dem_lat)
     dem_out = grid_to_json(dx, dy, dem_elev.astype(np.float32))
+    # UV coords into imagery.jpg, which fetch_imagery.py crops to exactly BBOX
+    dem_out["u"] = ((dem_lon[0, :] - BBOX["lon_min"]) / (BBOX["lon_max"] - BBOX["lon_min"])).tolist()
+    dem_out["v"] = ((dem_lat[:, 0] - BBOX["lat_min"]) / (BBOX["lat_max"] - BBOX["lat_min"])).tolist()
     (OUT_DIR / "dem.json").write_text(json.dumps(dem_out))
     print(f"dem.json: {dem_out['width']}x{dem_out['height']} points (decimated from {dem['elev'].shape})")
 

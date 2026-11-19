@@ -8,11 +8,13 @@ async function loadGrid(url) {
   return res.json();
 }
 
-// grid.x/grid.y are 1D axes (flat-earth local-meters approx), grid.elev is [row][col]
-function buildDemMesh(grid, exaggeration, opacity) {
-  const { width, height, x, y, elev } = grid;
+// grid.x/grid.y are 1D axes (flat-earth local-meters approx), grid.elev is [row][col],
+// grid.u/grid.v are 1D texture-coord axes into imagery.jpg (same approx)
+function buildDemMesh(grid, exaggeration, opacity, texture) {
+  const { width, height, x, y, elev, u, v } = grid;
   const geometry = new THREE.BufferGeometry();
   const positions = new Float32Array(width * height * 3);
+  const uvs = new Float32Array(width * height * 2);
 
   for (let r = 0; r < height; r++) {
     for (let c = 0; c < width; c++) {
@@ -20,6 +22,10 @@ function buildDemMesh(grid, exaggeration, opacity) {
       positions[i] = x[c];
       positions[i + 1] = elev[r][c] * exaggeration;
       positions[i + 2] = -y[r];
+
+      const j = (r * width + c) * 2;
+      uvs[j] = u[c];
+      uvs[j + 1] = v[r];
     }
   }
 
@@ -35,11 +41,13 @@ function buildDemMesh(grid, exaggeration, opacity) {
   }
 
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
 
   const material = new THREE.MeshStandardMaterial({
-    color: 0x8fb8d8,
+    color: texture ? 0xffffff : 0x8fb8d8,
+    map: texture ?? null,
     transparent: true,
     opacity,
     depthWrite: false, // let HRRR blend over this instead of depth-testing it away
@@ -81,10 +89,18 @@ function buildHrrrMesh(grid, exaggeration, opacity) {
   return mesh;
 }
 
+function loadTexture(url) {
+  return new THREE.TextureLoader().loadAsync(url).then((tex) => {
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  });
+}
+
 async function main() {
-  const [hrrr, dem] = await Promise.all([
+  const [hrrr, dem, imageryTexture] = await Promise.all([
     loadGrid("/data/hrrr.json"),
     loadGrid("/data/dem.json"),
+    loadTexture("/data/imagery.jpg"),
   ]);
 
   const app = document.getElementById("app");
@@ -114,8 +130,14 @@ async function main() {
 
   const hrrrOpacitySlider = document.getElementById("opacity-hrrr");
   const demOpacitySlider = document.getElementById("opacity-dem");
+  const imageryToggle = document.getElementById("toggle-imagery");
 
-  let demMesh = buildDemMesh(dem, EXAGGERATION_DEFAULT, parseFloat(demOpacitySlider.value));
+  let demMesh = buildDemMesh(
+    dem,
+    EXAGGERATION_DEFAULT,
+    parseFloat(demOpacitySlider.value),
+    imageryToggle.checked ? imageryTexture : null,
+  );
   let hrrrMesh = buildHrrrMesh(hrrr, EXAGGERATION_DEFAULT, parseFloat(hrrrOpacitySlider.value));
   scene.add(demMesh, hrrrMesh);
 
@@ -131,6 +153,11 @@ async function main() {
   demOpacitySlider.addEventListener("input", (e) => {
     demMesh.material.opacity = parseFloat(e.target.value);
   });
+  imageryToggle.addEventListener("change", (e) => {
+    demMesh.material.map = e.target.checked ? imageryTexture : null;
+    demMesh.material.color.set(e.target.checked ? 0xffffff : 0x8fb8d8);
+    demMesh.material.needsUpdate = true;
+  });
   document.getElementById("exaggeration").addEventListener("input", (e) => {
     const exaggeration = parseFloat(e.target.value);
     const demVisible = demMesh.visible;
@@ -138,7 +165,12 @@ async function main() {
     scene.remove(demMesh, hrrrMesh);
     demMesh.geometry.dispose();
     hrrrMesh.geometry.dispose();
-    demMesh = buildDemMesh(dem, exaggeration, parseFloat(demOpacitySlider.value));
+    demMesh = buildDemMesh(
+      dem,
+      exaggeration,
+      parseFloat(demOpacitySlider.value),
+      imageryToggle.checked ? imageryTexture : null,
+    );
     hrrrMesh = buildHrrrMesh(hrrr, exaggeration, parseFloat(hrrrOpacitySlider.value));
     demMesh.visible = demVisible;
     hrrrMesh.visible = hrrrVisible;
