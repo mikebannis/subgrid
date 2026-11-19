@@ -90,6 +90,59 @@ function buildHrrrMesh(grid, exaggeration, opacity) {
   return mesh;
 }
 
+// thin black outline around the top face of every HRRR cell, since the blocks
+// sit flush with no gaps and would otherwise blend into one solid slab
+function buildHrrrEdges(grid, exaggeration) {
+  const { width, height, x, y, elev, cellSizeX, cellSizeY } = grid;
+  const hw = cellSizeX / 2;
+  const hd = cellSizeY / 2;
+  const positions = [];
+
+  for (let r = 0; r < height; r++) {
+    for (let c = 0; c < width; c++) {
+      const top = Math.max(elev[r][c] * exaggeration, 1) + 1; // +1m to avoid z-fighting
+      const cx = x[c];
+      const cz = -y[r];
+      const corners = [
+        [cx - hw, top, cz - hd],
+        [cx + hw, top, cz - hd],
+        [cx + hw, top, cz + hd],
+        [cx - hw, top, cz + hd],
+      ];
+      for (let i = 0; i < 4; i++) {
+        positions.push(...corners[i], ...corners[(i + 1) % 4]);
+      }
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  const material = new THREE.LineBasicMaterial({ color: 0x000000 });
+  const lines = new THREE.LineSegments(geometry, material);
+  lines.renderOrder = 2; // on top of the HRRR blocks themselves
+  return lines;
+}
+
+const FEET_PER_METER = 3.28084;
+
+// one CSS2D label per HRRR cell showing its elevation in feet
+function buildHrrrLabels(grid, exaggeration) {
+  const { width, height, x, y, elev } = grid;
+  const labels = [];
+  for (let r = 0; r < height; r++) {
+    for (let c = 0; c < width; c++) {
+      const el = document.createElement("div");
+      el.className = "elev-label";
+      el.textContent = `${Math.round(elev[r][c] * FEET_PER_METER)} ft`;
+      const obj = new CSS2DObject(el);
+      const top = Math.max(elev[r][c] * exaggeration, 1);
+      obj.position.set(x[c], top + 1, -y[r]);
+      labels.push(obj);
+    }
+  }
+  return labels;
+}
+
 function loadTexture(url) {
   return new THREE.TextureLoader().loadAsync(url).then((tex) => {
     tex.colorSpace = THREE.SRGBColorSpace;
@@ -149,29 +202,22 @@ async function main() {
   });
 
   const hrrrOpacitySlider = document.getElementById("opacity-hrrr");
-  const demOpacitySlider = document.getElementById("opacity-dem");
   const imageryToggle = document.getElementById("toggle-imagery");
 
-  let demMesh = buildDemMesh(
-    dem,
-    EXAGGERATION_DEFAULT,
-    parseFloat(demOpacitySlider.value),
-    imageryToggle.checked ? imageryTexture : null,
-  );
+  // DEM is locked on at full opacity for now - no HUD controls for it
+  let demMesh = buildDemMesh(dem, EXAGGERATION_DEFAULT, 1, imageryToggle.checked ? imageryTexture : null);
   let hrrrMesh = buildHrrrMesh(hrrr, EXAGGERATION_DEFAULT, parseFloat(hrrrOpacitySlider.value));
-  scene.add(demMesh, hrrrMesh);
+  let hrrrEdges = buildHrrrEdges(hrrr, EXAGGERATION_DEFAULT);
+  let hrrrLabels = buildHrrrLabels(hrrr, EXAGGERATION_DEFAULT);
+  scene.add(demMesh, hrrrMesh, hrrrEdges, ...hrrrLabels);
 
   document.getElementById("toggle-hrrr").addEventListener("change", (e) => {
     hrrrMesh.visible = e.target.checked;
-  });
-  document.getElementById("toggle-dem").addEventListener("change", (e) => {
-    demMesh.visible = e.target.checked;
+    hrrrEdges.visible = e.target.checked;
+    for (const label of hrrrLabels) label.visible = e.target.checked;
   });
   hrrrOpacitySlider.addEventListener("input", (e) => {
     hrrrMesh.material.opacity = parseFloat(e.target.value);
-  });
-  demOpacitySlider.addEventListener("input", (e) => {
-    demMesh.material.opacity = parseFloat(e.target.value);
   });
   imageryToggle.addEventListener("change", (e) => {
     demMesh.material.map = e.target.checked ? imageryTexture : null;
@@ -182,21 +228,19 @@ async function main() {
   document.getElementById("exaggeration").addEventListener("input", (e) => {
     const exaggeration = parseFloat(e.target.value);
     exaggerationValue.textContent = `${exaggeration}x`;
-    const demVisible = demMesh.visible;
     const hrrrVisible = hrrrMesh.visible;
-    scene.remove(demMesh, hrrrMesh);
+    scene.remove(demMesh, hrrrMesh, hrrrEdges, ...hrrrLabels);
     demMesh.geometry.dispose();
     hrrrMesh.geometry.dispose();
-    demMesh = buildDemMesh(
-      dem,
-      exaggeration,
-      parseFloat(demOpacitySlider.value),
-      imageryToggle.checked ? imageryTexture : null,
-    );
+    hrrrEdges.geometry.dispose();
+    demMesh = buildDemMesh(dem, exaggeration, 1, imageryToggle.checked ? imageryTexture : null);
     hrrrMesh = buildHrrrMesh(hrrr, exaggeration, parseFloat(hrrrOpacitySlider.value));
-    demMesh.visible = demVisible;
+    hrrrEdges = buildHrrrEdges(hrrr, exaggeration);
+    hrrrLabels = buildHrrrLabels(hrrr, exaggeration);
     hrrrMesh.visible = hrrrVisible;
-    scene.add(demMesh, hrrrMesh);
+    hrrrEdges.visible = hrrrVisible;
+    for (const label of hrrrLabels) label.visible = hrrrVisible;
+    scene.add(demMesh, hrrrMesh, hrrrEdges, ...hrrrLabels);
     for (const { obj, elev } of pinObjects) {
       obj.position.y = elev * exaggeration;
     }
