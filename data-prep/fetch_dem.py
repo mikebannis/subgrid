@@ -1,6 +1,6 @@
 """Pull high-res DEM tiles (AWS Open Data 'Terrain Tiles', USGS-derived in the US,
-~10-15m resolution) covering the same Golden, CO bbox as fetch_hrrr_terrain.py,
-mosaic them, and crop to the bbox.
+~10-15m resolution) covering the active region's bbox (see region.py) as
+fetch_hrrr_terrain.py, mosaic them, and crop to the bbox.
 """
 
 import math
@@ -12,13 +12,15 @@ import requests
 from rasterio.io import MemoryFile
 from rasterio.warp import transform_bounds
 
+from region import get_region
+
 OUT_DIR = Path(__file__).parent / "output"
 OUT_DIR.mkdir(exist_ok=True)
 
 TILE_URL = "https://s3.amazonaws.com/elevation-tiles-prod/geotiff/{z}/{x}/{y}.tif"
 ZOOM = 13
 
-BBOX = {"lat_min": 39.64, "lat_max": 39.87, "lon_min": -105.37, "lon_max": -105.07}
+REGION_NAME, BBOX, _, _, _ = get_region()
 
 
 def deg2num(lat: float, lon: float, zoom: int) -> tuple[int, int]:
@@ -30,6 +32,7 @@ def deg2num(lat: float, lon: float, zoom: int) -> tuple[int, int]:
 
 
 def main() -> None:
+    print(f"region: {REGION_NAME} {BBOX}")
     x0, y0 = deg2num(BBOX["lat_max"], BBOX["lon_min"], ZOOM)  # top-left
     x1, y1 = deg2num(BBOX["lat_min"], BBOX["lon_max"], ZOOM)  # bottom-right
 

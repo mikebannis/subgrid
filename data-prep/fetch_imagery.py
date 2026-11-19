@@ -1,6 +1,6 @@
-"""Pull ESRI World Imagery aerial tiles (free, no API key) covering the same
-Golden, CO bbox as the DEM/HRRR fetches, mosaic them, and crop precisely to
-BBOX so align.py can map lon/lat -> UV with a plain linear formula.
+"""Pull ESRI World Imagery aerial tiles (free, no API key) covering the active
+region's bbox (see region.py) as the DEM/HRRR fetches, mosaic them, and crop
+precisely to BBOX so align.py can map lon/lat -> UV with a plain linear formula.
 """
 
 import io
@@ -10,6 +10,8 @@ from pathlib import Path
 import requests
 from PIL import Image
 
+from region import get_region
+
 OUT_DIR = Path(__file__).parent / "output"
 OUT_DIR.mkdir(exist_ok=True)
 
@@ -17,8 +19,7 @@ TILE_URL = "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery
 ZOOM = 13
 TILE_PX = 256
 
-# must match the BBOX in fetch_dem.py / fetch_hrrr_terrain.py
-BBOX = {"lat_min": 39.64, "lat_max": 39.87, "lon_min": -105.37, "lon_max": -105.07}
+REGION_NAME, BBOX, _, _, _ = get_region()
 
 
 def deg2num(lat: float, lon: float, zoom: int) -> tuple[int, int]:
@@ -37,6 +38,7 @@ def num2deg(x: int, y: int, zoom: int) -> tuple[float, float]:
 
 
 def main() -> None:
+    print(f"region: {REGION_NAME} {BBOX}")
     x0, y0 = deg2num(BBOX["lat_max"], BBOX["lon_min"], ZOOM)  # top-left
     x1, y1 = deg2num(BBOX["lat_min"], BBOX["lon_max"], ZOOM)  # bottom-right
 

@@ -1,6 +1,6 @@
-"""Pull the HRRR model's own surface terrain height (HGT:surface) for a bbox
-around Golden, CO, using byte-range requests against the .idx sidecar so we
-avoid downloading the full multi-GB grib2 file.
+"""Pull the HRRR model's own surface terrain height (HGT:surface) for the
+active region's bbox (see region.py), using byte-range requests against the
+.idx sidecar so we avoid downloading the full multi-GB grib2 file.
 """
 
 import sys
@@ -9,13 +9,14 @@ from pathlib import Path
 import requests
 import xarray as xr
 
+from region import get_region
+
 OUT_DIR = Path(__file__).parent / "output"
 OUT_DIR.mkdir(exist_ok=True)
 
 GRIB_URL = "https://noaa-hrrr-bdp-pds.s3.amazonaws.com/hrrr.{date}/conus/hrrr.t{hour}z.wrfsfcf00.grib2"
 
-# Golden, CO bbox - covers Lookout Mountain + North/South Table Mountain + some flat plains for contrast
-BBOX = {"lat_min": 39.64, "lat_max": 39.87, "lon_min": -105.37, "lon_max": -105.07}
+REGION_NAME, BBOX, _, _, _ = get_region()
 
 
 def find_byte_range(idx_url: str, field: str) -> tuple[int, int | None]:
@@ -39,6 +40,7 @@ def fetch_message(date: str, hour: str, field: str, out_path: Path) -> None:
 
 
 def main() -> None:
+    print(f"region: {REGION_NAME} {BBOX}")
     date, hour = (sys.argv[1], sys.argv[2]) if len(sys.argv) > 2 else ("20261118", "00")
     grib_path = OUT_DIR / "hrrr_terrain.grib2"
     fetch_message(date, hour, "HGT:surface:anl", grib_path)

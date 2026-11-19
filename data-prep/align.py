@@ -15,22 +15,14 @@ from pathlib import Path
 import numpy as np
 from pyproj import Transformer
 
+from region import get_region
+
 OUT_DIR = Path(__file__).parent / "output"
 
-# must match the BBOX in fetch_dem.py / fetch_hrrr_terrain.py / fetch_imagery.py
-BBOX = {"lat_min": 39.64, "lat_max": 39.87, "lon_min": -105.37, "lon_max": -105.07}
-
-ORIGIN_LAT = (BBOX["lat_min"] + BBOX["lat_max"]) / 2
-ORIGIN_LON = (BBOX["lon_min"] + BBOX["lon_max"]) / 2
+REGION_NAME, BBOX, ORIGIN_LAT, ORIGIN_LON, PINS = get_region()
 SCALE = math.cos(math.radians(ORIGIN_LAT))  # Web Mercator -> true ground meters
 
 DEM_TARGET_SIZE = 400  # decimate DEM to roughly this many points per side
-
-# 39deg44'45.2"N 105deg14'26.9"W converted to decimal degrees
-PINS = [
-    {"name": "LO LZ", "lat": 39.74992603665513, "lon": -105.2306209586858},
-    {"name": "North Launch", "lat": 39.7458888889, "lon": -105.2408055556},
-]
 
 to_webmerc = Transformer.from_crs("EPSG:4326", "EPSG:3857", always_xy=True)
 
@@ -55,6 +47,7 @@ def grid_to_json(local_x: np.ndarray, local_y: np.ndarray, elev: np.ndarray) -> 
 
 
 def main() -> None:
+    print(f"region: {REGION_NAME} {BBOX}")
     hrrr = np.load(OUT_DIR / "hrrr_terrain_subset.npz")
     hx, hy = lonlat_to_local(hrrr["lon"], hrrr["lat"])
     hrrr_out = grid_to_json(hx, hy, hrrr["elev"].astype(np.float32))
