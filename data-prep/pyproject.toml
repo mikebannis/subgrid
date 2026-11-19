@@ -1,0 +1,17 @@
+[project]
+name = "data-prep"
+version = "0.1.0"
+description = "Fetch/align HRRR terrain and DEM data for the Three.js viewer"
+requires-python = ">=3.12"
+dependencies = [
+    "boto3>=1.44.6",
+    "cfgrib>=0.9.15.1",
+    "numpy>=2.5.5",
+    "pyproj>=3.8.0",
+    "rasterio>=1.5.2",
+    "requests>=2.34.2",
+    "xarray>=2026.9.0",
+]
+
+[tool.uv]
+package = false

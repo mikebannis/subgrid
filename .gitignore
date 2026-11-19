@@ -1,0 +1,12 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+
+# Generated data (large, regenerable)
+data-prep/output/
+data-prep/scratch/
